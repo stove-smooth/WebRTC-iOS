@@ -1,0 +1,28 @@
+PODS:
+  - SnapKit (5.0.1)
+  - Starscream (4.0.4)
+  - Then (2.7.0)
+  - WebRTC-lib (96.0.0)
+
+DEPENDENCIES:
+  - SnapKit
+  - Starscream
+  - Then
+  - WebRTC-lib
+
+SPEC REPOS:
+  trunk:
+    - SnapKit
+    - Starscream
+    - Then
+    - WebRTC-lib
+
+SPEC CHECKSUMS:
+  SnapKit: 97b92857e3df3a0c71833cce143274bf6ef8e5eb
+  Starscream: 5178aed56b316f13fa3bc55694e583d35dd414d9
+  Then: acfe0be7e98221c6204e12f8161459606d5d822d
+  WebRTC-lib: 508fe02efa0c1a3a8867082a77d24c9be5d29aeb
+
+PODFILE CHECKSUM: c16b81d7455bbb59c63cf18463c6d11cb17770ca
+
+COCOAPODS: 1.11.2
