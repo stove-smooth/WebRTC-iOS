@@ -12,11 +12,11 @@ protocol SignalClientDelegate: AnyObject {
     func signalClientDidConnect(_ signalClient: SignalingClient)
     func signalClientDidDisconnect(_ signalClient: SignalingClient)
     
-    func signalClient(_ signalClient: SignalingClient, didReceiveParticipants members: [String])
+    func signalClient(_ signalClient: SignalingClient, didReceiveParticipants members: Array<Dictionary<String, Any>>)
     func signalClient(_ signalClient: SignalingClient, didReceiveRemoteSdp sdp: RTCSessionDescription, userId: String)
     func signalClient(_ signalClient: SignalingClient, didReceiveCandidate candidate: RTCIceCandidate, userId: String)
-    func signalClient(_ signalClient: SignalingClient, didReceiveNewParticipants member: String)
-    func signalClient(_ signalClient: SignalingClient, removedParticipant member: String)
+    func signalClient(_ signalClient: SignalingClient, didReceiveNewParticipants member: Dictionary<String, Any>)
+    func signalClient(_ signalClient: SignalingClient, removedParticipant userId: String)
 }
 
 enum SignalStatus {
@@ -82,7 +82,7 @@ final class SignalingClient {
     func send(candidate rtcIceCandidate: RTCIceCandidate) {
         let iceCandidate = IceCandidate(from: rtcIceCandidate)
         
-        let candidate = Candidate(id: "onIceCandidate", userId: "3", candidate: iceCandidate)
+        let candidate = Candidate(id: "onIceCandidate", userId: "1", candidate: iceCandidate)
         let data = try! JSONEncoder().encode(candidate)
         
         let theJSONText = String(data: data, encoding: String.Encoding.utf8)!
@@ -113,10 +113,10 @@ extension SignalingClient: WebSocketProviderDelegate {
         switch receiveMessage["id"] as! String {
         
         case "existingParticipants": // 방에 접속한 유저 명단
-            self.delegate?.signalClient(self, didReceiveParticipants: receiveMessage["members"] as! [String])
+            self.delegate?.signalClient(self, didReceiveParticipants: receiveMessage["members"] as! Array<Dictionary<String, Any>>)
         
         case "newParticipantArrived": // 새로운 유저 입장
-            self.delegate?.signalClient(self, didReceiveNewParticipants: receiveMessage["userId"] as! String)
+            self.delegate?.signalClient(self, didReceiveNewParticipants: receiveMessage["member"] as! Dictionary<String, Any>)
         
         case "receiveVideoAnswer": // sdp 정보 전송에 대한 응답]
             let answer = RTCSessionDescription(type: .answer, sdp: receiveMessage["sdpAnswer"] as! String)

@@ -13,7 +13,7 @@ class MainViewController: UIViewController {
     
     private let signalClient: SignalingClient
     private let webRTCClient: WebRTCClient
-    private var participants: [String] = []
+    private var participants: [MemberInfo] = []
     
     @IBOutlet private weak var speakerButton: UIButton?
     @IBOutlet private weak var signalingStatusLabel: UILabel?
@@ -101,7 +101,7 @@ class MainViewController: UIViewController {
         self.signalClient.joinRoom(communityId: "49", roomId: "167")
     }
     
-
+    
     @IBAction private func muteDidTap(_ sender: UIButton) {
         self.mute = !self.mute
         if self.mute {
@@ -138,7 +138,7 @@ class MainViewController: UIViewController {
         let vc = VideoViewController.instance(webRTCClient: self.webRTCClient)
         self.present(vc, animated: true, completion: nil)
     }
-     
+    
     
     init(signalClient: SignalingClient) {
         self.signalClient = signalClient
@@ -215,39 +215,43 @@ extension MainViewController: SignalClientDelegate {
         }
     }
     
-    func signalClient(_ signalClient: SignalingClient, removedParticipant member: String) {
-        guard let index = self.participants.firstIndex(of: member)?.hashValue else {
+    func signalClient(_ signalClient: SignalingClient, removedParticipant userId: String) {
+        guard let index = self.participants.firstIndex(where: {$0.userId == userId} ) else {
             fatalError("Could not remove RTCPeerConnection participant")
         }
-    
+        
         self.webRTCClient.peerConnections.remove(at: index)
     }
     
-    func signalClient(_ signalClient: SignalingClient, didReceiveParticipants members: [String]) {
-        self.participants = members
+    func signalClient(_ signalClient: SignalingClient, didReceiveParticipants members: Array<Dictionary<String, Any>>) {
         
-        for memberId in members {
-            let pc =  self.webRTCClient.generatePeerConnection(memberId: memberId)
+        let memberDecode = dictionaryToObject(objectType: MemberInfo.self, dictionary: members)
+        
+        self.participants = memberDecode ?? []
+        
+        for member in self.participants {
+            let pc =  self.webRTCClient.generatePeerConnection(memberId: member.userId)
             self.webRTCClient.peerConnections.append(pc)
             
             self.webRTCClient.offer(pc: pc) { sdp in
                 self.hasLocalSdp = true
-                self.signalClient.send(memberId: memberId, sdp: sdp)
+                self.signalClient.send(memberId: member.userId, sdp: sdp)
             }
         }
     }
     
-    func signalClient(_ signalClient: SignalingClient, didReceiveNewParticipants member: String) {
-        if (!self.participants.contains(member)) {
-            self.participants.append(member)
-        }
+    func signalClient(_ signalClient: SignalingClient, didReceiveNewParticipants member: Dictionary<String, Any>) {
         
-        let pc = self.webRTCClient.generatePeerConnection(memberId: member)
-        self.webRTCClient.peerConnections.append(pc)
+        guard let newMember = dictionaryToObject(objectType: MemberInfo.self, dictionary: [member])?.first else { return }
         
-        self.webRTCClient.offer(pc: pc) { (sdp) in
-            self.hasLocalSdp = true
-            self.signalClient.send(memberId: member, sdp: sdp)
+        if(!self.participants.contains(where: { $0.userId == newMember.userId })) {
+            let pc = self.webRTCClient.generatePeerConnection(memberId: newMember.userId)
+            self.webRTCClient.peerConnections.append(pc)
+            self.webRTCClient.offer(pc: pc) { (sdp) in
+                self.hasLocalSdp = true
+                self.signalClient.send(memberId: newMember.userId, sdp: sdp)
+            }
+            
         }
     }
 }
@@ -269,9 +273,9 @@ extension MainViewController: WebRTCClientDelegate {
         case .failed, .closed:
             textColor = .red
         case .new, .checking, .count:
-            textColor = .black
+            textColor = .white
         @unknown default:
-            textColor = .black
+            textColor = .white
         }
         DispatchQueue.main.async {
             self.webRTCStatusLabel?.text = state.description.capitalized
@@ -280,3 +284,13 @@ extension MainViewController: WebRTCClientDelegate {
     }
 }
 
+
+func dictionaryToObject<T:Decodable>(objectType:T.Type, dictionary:[[String:Any]]) -> [T]? {
+    
+    guard let dictionaries = try? JSONSerialization.data(withJSONObject: dictionary) else { return nil }
+    let decoder = JSONDecoder()
+    decoder.keyDecodingStrategy = .convertFromSnakeCase
+    guard let objects = try? decoder.decode([T].self, from: dictionaries) else { return nil }
+    return objects
+    
+}
